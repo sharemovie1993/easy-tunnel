@@ -1,0 +1,205 @@
+import { useState } from 'react';
+import { Tunnel, tunnelApi } from '../services/api';
+import StatusBadge from './StatusBadge';
+
+interface TunnelCardProps {
+  tunnel: Tunnel;
+  onRefresh: () => void;
+}
+
+// Port labels untuk aplikasi umum
+const PORT_LABELS: Record<number, string> = {
+  8983: 'Dapodik',
+  9000: 'E-Rapor',
+  80:   'HTTP',
+  443:  'HTTPS',
+  3000: 'Node/React',
+  8080: 'Tomcat',
+  5432: 'PostgreSQL',
+  3306: 'MySQL',
+};
+
+export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
+  const [loading, setLoading] = useState<'start' | 'stop' | 'delete' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingPort, setUpdatingPort] = useState(false);
+
+  async function handlePortChange(newPort: number) {
+    setUpdatingPort(true);
+    setError(null);
+    try {
+      await tunnelApi.changePort(tunnel.id, newPort);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUpdatingPort(false);
+    }
+  }
+
+  const isConnected = tunnel.wg_status?.status === 'connected';
+  const subdomain = tunnel.subdomain ? `${tunnel.subdomain}.absenta.id` : null;
+  const portLabel = tunnel.local_port ? PORT_LABELS[tunnel.local_port] : null;
+
+  const expiresAt = tunnel.expires_at
+    ? new Date(tunnel.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const isExpired = tunnel.expires_at
+    ? new Date(tunnel.expires_at) < new Date()
+    : false;
+
+  async function handleStart() {
+    setLoading('start');
+    setError(null);
+    try {
+      await tunnelApi.start(tunnel.id);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleStop() {
+    setLoading('stop');
+    setError(null);
+    try {
+      await tunnelApi.stop(tunnel.id);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Yakin hapus tunnel "${tunnel.name}"? Tunnel akan berhenti dan konfigurasi dihapus.`)) return;
+    setLoading('delete');
+    try {
+      await tunnelApi.remove(tunnel.id);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  return (
+    <div className={`card tunnel-card ${isConnected ? 'is-connected' : ''}`}>
+      <div className="tunnel-card-header">
+        <div>
+          <h3 className="tunnel-card-name">
+            {portLabel && <span style={{ marginRight: 6 }}>📡</span>}
+            {tunnel.name}
+          </h3>
+          {subdomain ? (
+            <a
+              className="tunnel-card-url"
+              href={`https://${subdomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              🌐 https://{subdomain}
+            </a>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Subdomain belum dikonfigurasi</span>
+          )}
+        </div>
+        <StatusBadge status={loading === 'start' ? 'loading' : (tunnel.wg_status?.status || 'disconnected')} />
+      </div>
+
+      <div className="tunnel-card-meta">
+        {tunnel.local_port && (
+          <span className="meta-chip">
+            🔌 Port {tunnel.local_port}
+            {portLabel && ` (${portLabel})`}
+            <button
+              onClick={() => {
+                const newPortStr = prompt(`Ubah port lokal untuk "${tunnel.name}":`, String(tunnel.local_port));
+                if (newPortStr !== null) {
+                  const newPort = parseInt(newPortStr, 10);
+                  if (!isNaN(newPort) && newPort >= 1 && newPort <= 65535) {
+                    handlePortChange(newPort);
+                  } else {
+                    alert('Port tidak valid (1-65535).');
+                  }
+                }
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-accent)',
+                marginLeft: 6,
+                cursor: 'pointer',
+                padding: 0,
+                fontSize: 12,
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+              title="Ubah Port"
+              disabled={updatingPort}
+            >
+              {updatingPort ? '⏳' : '✏️'}
+            </button>
+          </span>
+        )}
+        {tunnel.wg_ip && (
+          <span className="meta-chip">
+            🔒 VPN {tunnel.wg_ip}
+          </span>
+        )}
+        {expiresAt && (
+          <span className={`meta-chip ${isExpired ? 'error' : ''}`}>
+            {isExpired ? '⚠️ Expired' : '📅'} {expiresAt}
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <div className="alert alert-danger" style={{ marginTop: 8, marginBottom: 0 }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      <div className="tunnel-card-actions">
+        {isConnected ? (
+          <button
+            id={`btn-stop-${tunnel.id}`}
+            className="btn btn-danger btn-sm"
+            onClick={handleStop}
+            disabled={loading !== null}
+          >
+            {loading === 'stop' ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '⏹'}
+            Nonaktifkan
+          </button>
+        ) : (
+          <button
+            id={`btn-start-${tunnel.id}`}
+            className="btn btn-success btn-sm"
+            onClick={handleStart}
+            disabled={loading !== null || isExpired || !tunnel.subdomain}
+            title={isExpired ? 'Lisensi telah kedaluwarsa' : ''}
+          >
+            {loading === 'start' ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '▶'}
+            Aktifkan
+          </button>
+        )}
+
+        <button
+          id={`btn-delete-${tunnel.id}`}
+          className="btn btn-outline btn-sm"
+          onClick={handleDelete}
+          disabled={loading !== null}
+          style={{ marginLeft: 'auto' }}
+        >
+          {loading === 'delete' ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '🗑'}
+          Hapus
+        </button>
+      </div>
+    </div>
+  );
+}
