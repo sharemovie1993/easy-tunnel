@@ -7,3 +7,4 @@ dist/
 logs/
 tunnels/*.conf
 .env
+node-v20/
