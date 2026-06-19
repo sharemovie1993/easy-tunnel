@@ -23,6 +23,8 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
   const [loading, setLoading] = useState<'start' | 'stop' | 'delete' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatingPort, setUpdatingPort] = useState(false);
+  const [isEditingPort, setIsEditingPort] = useState(false);
+  const [editPortValue, setEditPortValue] = useState(String(tunnel.local_port || ''));
 
   async function handlePortChange(newPort: number) {
     setUpdatingPort(true);
@@ -114,37 +116,84 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
 
       <div className="tunnel-card-meta">
         {tunnel.local_port && (
-          <span className="meta-chip">
-            🔌 Port {tunnel.local_port}
-            {portLabel && ` (${portLabel})`}
-            <button
-              onClick={() => {
-                const newPortStr = prompt(`Ubah port lokal untuk "${tunnel.name}":`, String(tunnel.local_port));
-                if (newPortStr !== null) {
-                  const newPort = parseInt(newPortStr, 10);
-                  if (!isNaN(newPort) && newPort >= 1 && newPort <= 65535) {
-                    handlePortChange(newPort);
-                  } else {
-                    alert('Port tidak valid (1-65535).');
-                  }
-                }
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-accent)',
-                marginLeft: 6,
-                cursor: 'pointer',
-                padding: 0,
-                fontSize: 12,
-                display: 'inline-flex',
-                alignItems: 'center'
-              }}
-              title="Ubah Port"
-              disabled={updatingPort}
-            >
-              {updatingPort ? '⏳' : '✏️'}
-            </button>
+          <span className="meta-chip" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            {isEditingPort ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                🔌 Port: 
+                <input
+                  type="number"
+                  value={editPortValue}
+                  onChange={(e) => setEditPortValue(e.target.value)}
+                  style={{
+                    width: 60,
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    color: 'var(--color-text)',
+                    padding: '1px 4px',
+                    fontSize: 11,
+                    outline: 'none'
+                  }}
+                  min="1"
+                  max="65535"
+                  disabled={updatingPort}
+                  autoFocus
+                />
+                <button
+                  onClick={async () => {
+                    const newPort = parseInt(editPortValue, 10);
+                    if (!isNaN(newPort) && newPort >= 1 && newPort <= 65535) {
+                      await handlePortChange(newPort);
+                      setIsEditingPort(false);
+                    } else {
+                      alert('Port tidak valid (1-65535).');
+                    }
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, display: 'inline-flex', alignItems: 'center' }}
+                  title="Simpan"
+                  disabled={updatingPort}
+                >
+                  {updatingPort ? '⏳' : '✅'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingPort(false);
+                    setEditPortValue(String(tunnel.local_port));
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, display: 'inline-flex', alignItems: 'center' }}
+                  title="Batal"
+                  disabled={updatingPort}
+                >
+                  ❌
+                </button>
+              </span>
+            ) : (
+              <>
+                🔌 Port {tunnel.local_port}
+                {portLabel && ` (${portLabel})`}
+                <button
+                  onClick={() => {
+                    setEditPortValue(String(tunnel.local_port));
+                    setIsEditingPort(true);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-accent)',
+                    marginLeft: 6,
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center'
+                  }}
+                  title="Ubah Port"
+                  disabled={updatingPort}
+                >
+                  ✏️
+                </button>
+              </>
+            )}
           </span>
         )}
         {tunnel.wg_ip && (

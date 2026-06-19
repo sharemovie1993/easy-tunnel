@@ -247,6 +247,7 @@ export default function DashboardPage() {
                           <div>⚠️ Aktif di komputer: <strong>{lic.active_hostname}</strong></div>
                           {lic.app_name && <div>Aplikasi: <strong>{lic.app_name}</strong></div>}
                           {lic.requested_slug && <div>Domain: <strong style={{ color: 'var(--color-accent)' }}>{lic.requested_slug}.absenta.id</strong></div>}
+                          {lic.local_port && <div>Port Lokal: <strong>{lic.local_port}</strong></div>}
                         </div>
                       )}
                     </div>
