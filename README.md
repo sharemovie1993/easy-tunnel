@@ -4,6 +4,22 @@
 
 ---
 
+## 📥 Download Installer (.exe)
+
+Bagi pengguna Windows yang ingin langsung menggunakan aplikasi tanpa perlu melakukan setup dari source code, Anda dapat mengunduh installer executable (`.exe`) siap pakai:
+
+👉 **[Download Easy Tunnel (.exe) Terbaru di Sini](https://github.com/sharemovie1993/easy-tunnel/releases)**
+
+### Cara Instalasi via Installer (.exe):
+1. Unduh file **`Easy Tunnel Setup 1.0.0.exe`** dari tautan Releases di atas.
+2. Klik ganda (double-click) pada file `.exe` yang diunduh.
+3. Ikuti petunjuk instalasi di layar.
+4. Setelah selesai, pintasan (shortcut) **Easy Tunnel** akan otomatis muncul di desktop dan start menu Anda.
+
+> 💡 **Informasi Repository**: File executable installer (.exe) berukuran sekitar ~77 MB dan sengaja tidak dipush ke repositori Git ini (dikecualikan via `.gitignore`) untuk mencegah repository bloat. File ini secara resmi didistribusikan melalui fitur **Releases** GitHub.
+
+---
+
 ## Fitur Utama
 
 - ✅ **Zero-config** — Masukkan license key, isi port, pilih subdomain, langsung online
@@ -45,6 +61,24 @@ npm run dev
 ```
 
 Buka browser ke: **http://localhost:5173**
+
+---
+
+## 🛠️ Build Installer (.exe) Mandiri
+
+Jika Anda ingin melakukan compile/build installer Windows (`.exe`) sendiri dari source code:
+
+1. Pastikan Anda telah memasang [Node.js](https://nodejs.org/).
+2. Buka **PowerShell** atau terminal Windows sebagai **Administrator** (UAC Administrator diperlukan agar proses build dependency native library seperti SQLite berjalan lancar di Windows).
+3. Jalankan perintah untuk mengunduh semua dependency backend & frontend secara otomatis:
+   ```powershell
+   npm run install-all
+   ```
+4. Jalankan perintah berikut untuk meng-compile file backend, frontend, dan memaketkannya menggunakan Electron Builder:
+   ```powershell
+   npm run package
+   ```
+5. File installer siap pakai akan terbuat di folder `dist/` dengan nama **`Easy Tunnel Setup 1.0.0.exe`**.
 
 ---
 
