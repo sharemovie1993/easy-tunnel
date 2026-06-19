@@ -234,9 +234,36 @@ export default function DashboardPage() {
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: lic.active_hostname ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: lic.active_hostname ? '#ef4444' : 'var(--color-primary)', border: lic.active_hostname ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--color-border)' }}>
                           {lic.active_hostname ? '🔒 TERKUNCI' : (lic.status === 'active' ? '🟢 AKTIF' : '⏳ PENDING')}
                         </span>
-                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                          Exp: <strong>{lic.expires_at}</strong>
-                        </span>
+                        {(() => {
+                          if (!lic.expires_at) return null;
+                          const expDate = new Date(lic.expires_at);
+                          const today = new Date();
+                          const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                          const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+                          const diffDays = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+                          
+                          const formattedExpDate = expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+                          if (diffDays < 0) {
+                            return (
+                              <span style={{ fontSize: 11, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '3px 8px', borderRadius: 4, border: '1px solid rgba(239, 68, 68, 0.2)', fontWeight: 600 }}>
+                                ⚠️ Kedaluwarsa
+                              </span>
+                            );
+                          } else if (diffDays <= 3) {
+                            return (
+                              <span style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '3px 8px', borderRadius: 4, border: '1px solid rgba(245, 158, 11, 0.2)', fontWeight: 600 }}>
+                                ⚠️ Exp: {formattedExpDate} ({diffDays === 0 ? 'Hari ini' : `${diffDays} hari lagi`})
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                Exp: <strong>{formattedExpDate}</strong>
+                              </span>
+                            );
+                          }
+                        })()}
                       </div>
                       <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text)' }}>{lic.school_name}</h3>
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: lic.active_hostname ? 12 : 16 }}>

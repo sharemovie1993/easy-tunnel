@@ -48,7 +48,13 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
     : null;
 
   const isExpired = tunnel.expires_at
-    ? new Date(tunnel.expires_at) < new Date()
+    ? (() => {
+        const expDate = new Date(tunnel.expires_at);
+        const today = new Date();
+        const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+        const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+        return Math.floor((d1 - d2) / (1000 * 60 * 60 * 24)) < 0;
+      })()
     : false;
 
   async function handleStart() {
@@ -201,11 +207,33 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
             🔒 VPN {tunnel.wg_ip}
           </span>
         )}
-        {expiresAt && (
-          <span className={`meta-chip ${isExpired ? 'error' : ''}`}>
-            {isExpired ? '⚠️ Expired' : '📅'} {expiresAt}
-          </span>
-        )}
+        {tunnel.expires_at && (() => {
+          const expDate = new Date(tunnel.expires_at);
+          const today = new Date();
+          const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+          const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+          const diffDays = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays < 0) {
+            return (
+              <span className="meta-chip" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                ⚠️ Kedaluwarsa
+              </span>
+            );
+          } else if (diffDays <= 3) {
+            return (
+              <span className="meta-chip" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                ⚠️ Exp: {expiresAt} ({diffDays === 0 ? 'Hari ini' : `${diffDays} hari lagi`})
+              </span>
+            );
+          } else {
+            return (
+              <span className="meta-chip">
+                📅 {expiresAt}
+              </span>
+            );
+          }
+        })()}
       </div>
 
       {error && (
