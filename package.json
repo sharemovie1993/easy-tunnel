@@ -11,8 +11,9 @@
     "build-frontend": "npm run build --prefix frontend",
     "build-backend": "npm run build --prefix backend",
     "build-all": "npm run build-backend && npm run build-frontend",
+    "rebuild-native": "electron-rebuild -f -w sqlite3",
     "electron-dev": "npm run build-backend && electron .",
-    "package": "npm run build-all && electron-builder --windows"
+    "package": "npm run build-all && npm run rebuild-native && electron-builder --windows"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3",
     "smart-buffer": "^4.2.0",
@@ -31,6 +33,7 @@
   "build": {
     "appId": "com.easytunnel.manager",
     "productName": "Easy Tunnel",
+    "npmRebuild": false,
     "win": {
       "target": "nsis"
     },
