@@ -3,7 +3,16 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const TUNNELS_DIR = path.join(__dirname, '../../tunnels');
+let TUNNELS_DIR = path.join(__dirname, '../../tunnels');
+
+try {
+  if (process.versions && process.versions.electron) {
+    const { app } = require('electron');
+    const userDataPath = app.getPath('userData');
+    TUNNELS_DIR = path.join(userDataPath, 'tunnels');
+  }
+} catch (e) {}
+
 const WINDOWS_WG_PATH = 'C:\\Program Files\\WireGuard\\wireguard.exe';
 const WIREGUARD_INSTALLER_URL = 'https://download.wireguard.com/windows-client/wireguard-installer.exe';
 

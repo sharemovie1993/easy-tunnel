@@ -3,11 +3,45 @@
   "version": "1.0.0",
   "description": "Zero-config WireGuard tunnel manager untuk mengekspos layanan lokal ke internet",
   "private": true,
+  "main": "main.js",
   "scripts": {
-    "install-all": "npm install --prefix backend && npm install --prefix frontend",
+    "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend",
     "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "start": "pm2 start ecosystem.config.js"
+    "build-frontend": "npm run build --prefix frontend",
+    "build-backend": "npm run build --prefix backend",
+    "build-all": "npm run build-backend && npm run build-frontend",
+    "electron-dev": "npm run build-backend && electron .",
+    "package": "npm run build-all && electron-builder --windows"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.easytunnel.manager",
+    "productName": "Easy Tunnel",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Easy Tunnel"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "backend/dist/**/*",
+      "backend/package.json",
+      "backend/node_modules/**/*",
+      "frontend/dist/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "backend/node_modules/sqlite3/**/*"
+    ]
   }
 }

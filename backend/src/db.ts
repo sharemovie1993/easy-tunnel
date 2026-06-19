@@ -2,7 +2,15 @@ import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
 
-const DB_PATH = path.join(__dirname, '../../local.db');
+let DB_PATH = path.join(__dirname, '../../local.db');
+
+try {
+  if (process.versions && process.versions.electron) {
+    const { app } = require('electron');
+    const userDataPath = app.getPath('userData');
+    DB_PATH = path.join(userDataPath, 'local.db');
+  }
+} catch (e) {}
 
 let _db: Database | null = null;
 
