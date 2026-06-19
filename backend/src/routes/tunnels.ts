@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
+import os from 'os';
 import { getDb } from '../db';
 import { WireguardManager } from '../services/wireguardManager';
 import {
   validateLicenseKey,
-  requestTunnelConfig
+  requestTunnelConfig,
+  releaseLicense
 } from '../services/licenseClient';
 
 const router = Router();
@@ -107,12 +109,13 @@ router.post('/setup', async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Request tunnel config ke server lisensi
+    // 1. Request tunnel config ke server lisensi (dengan hostname)
     const tunnelData = await requestTunnelConfig({
       license_key: license_key.trim(),
       subdomain_slug: subdomain_slug.trim().toLowerCase(),
       local_port: portNum,
-      app_name: app_name.trim()
+      app_name: app_name.trim(),
+      hostname: os.hostname()
     });
 
     // 2. Tulis file .conf WireGuard ke disk lokal
@@ -201,6 +204,16 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const tunnel = await db.get('SELECT * FROM tunnels WHERE id = ?', [req.params.id]) as any;
     if (!tunnel) return res.status(404).json({ success: false, message: 'Tunnel tidak ditemukan.' });
 
+    // 1. Lepas kunci perangkat (device lock) di server lisensi
+    try {
+      if (tunnel.license_key) {
+        await releaseLicense(tunnel.license_key);
+      }
+    } catch (releaseErr: any) {
+      console.warn('[Tunnel Delete Warning] Gagal melepas kunci perangkat di server lisensi (kemungkinan offline):', releaseErr.message);
+    }
+
+    // 2. Hapus terowongan lokal
     if (tunnel.subdomain) {
       await WireguardManager.removeTunnel(tunnel.subdomain);
     }

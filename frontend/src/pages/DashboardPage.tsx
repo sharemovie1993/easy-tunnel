@@ -14,6 +14,7 @@ interface CloudLicense {
   requested_slug: string | null;
   local_port: number | null;
   app_name: string | null;
+  active_hostname?: string | null;
 }
 
 export default function DashboardPage() {
@@ -227,28 +228,34 @@ export default function DashboardPage() {
             ) : (
               <div className="card-grid">
                 {uninstalledLicenses.map(lic => (
-                  <div key={lic.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'between', minHeight: 180 }}>
+                  <div key={lic.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'between', minHeight: 200 }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                          {lic.status === 'active' ? '🟢 AKTIF' : '⏳ PENDING'}
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: lic.active_hostname ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: lic.active_hostname ? '#ef4444' : 'var(--color-primary)', border: lic.active_hostname ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--color-border)' }}>
+                          {lic.active_hostname ? '🔒 TERKUNCI' : (lic.status === 'active' ? '🟢 AKTIF' : '⏳ PENDING')}
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                           Exp: <strong>{lic.expires_at}</strong>
                         </span>
                       </div>
                       <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text)' }}>{lic.school_name}</h3>
-                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: lic.active_hostname ? 12 : 16 }}>
                         Key: <code style={{ fontSize: 11 }}>{lic.license_key}</code>
                       </div>
+                      {lic.active_hostname && (
+                        <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.1)', marginBottom: 16 }}>
+                          ⚠️ Aktif di komputer: <strong>{lic.active_hostname}</strong>
+                        </div>
+                      )}
                     </div>
 
                     <button 
-                      className="btn btn-primary btn-block" 
+                      className={lic.active_hostname ? "btn btn-outline btn-block" : "btn btn-primary btn-block"}
                       onClick={() => openSetupModal(lic)}
-                      disabled={lic.status !== 'active'}
+                      disabled={lic.status !== 'active' || !!lic.active_hostname}
+                      style={lic.active_hostname ? { cursor: 'not-allowed', color: 'rgba(255,255,255,0.2)' } : undefined}
                     >
-                      🖥️ Pasang Konfigurasi di PC Ini
+                      {lic.active_hostname ? '🔒 Lisensi Terkunci di Device Lain' : '🖥️ Pasang Konfigurasi di PC Ini'}
                     </button>
                   </div>
                 ))}

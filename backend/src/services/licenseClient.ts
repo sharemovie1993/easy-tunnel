@@ -37,6 +37,7 @@ export interface LicenseInfo {
   requested_slug: string | null;
   local_port: number | null;
   app_name: string | null;
+  active_hostname?: string | null;
 }
 
 /** Ambil daftar paket Easy Tunnel dari server lisensi */
@@ -65,6 +66,7 @@ export async function requestTunnelConfig(params: {
   subdomain_slug: string;
   local_port: number;
   app_name: string;
+  hostname?: string;
 }): Promise<TunnelConfig> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/request`, {
     method: 'POST',
@@ -75,6 +77,19 @@ export async function requestTunnelConfig(params: {
   const data = await res.json() as any;
   if (!data.success) throw new Error(data.message || 'Gagal memproses tunnel di server.');
   return data.data;
+}
+
+/** Lepas kunci perangkat (device lock) lisensi */
+export async function releaseLicense(licenseKey: string): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/release`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ license_key: licenseKey.trim() }),
+    signal: AbortSignal.timeout(10000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal melepas kunci perangkat.');
+  return data;
 }
 
 /** Request lisensi baru via billing (order + bayar) */
