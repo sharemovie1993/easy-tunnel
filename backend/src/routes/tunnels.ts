@@ -20,6 +20,15 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
     if (!tunnel.license_key) continue;
     try {
       const remoteInfo = await validateLicenseKey(tunnel.license_key);
+      
+      // Update local expiration date
+      if (remoteInfo.expires_at && remoteInfo.expires_at !== tunnel.expires_at) {
+        await db.run(
+          "UPDATE tunnels SET expires_at = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+          [remoteInfo.expires_at, tunnel.id]
+        );
+      }
+
       const remotePort = remoteInfo.local_port;
       if (remotePort && remotePort !== tunnel.local_port) {
         await db.run(
@@ -29,8 +38,27 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
         console.log(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}": port lokal diperbarui ${tunnel.local_port} → ${remotePort}`);
       }
     } catch (e: any) {
-      // Abaikan error network — tidak boleh menghambat response
-      console.warn(`[Auto-Sync] Gagal sinkron port tunnel #${tunnel.id}:`, e.message);
+      if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
+        console.warn(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}" terdeteksi kedaluwarsa di server lisensi. Menonaktifkan tunnel lokal secara paksa...`);
+        
+        // Hentikan WireGuard service lokal jika sedang terhubung
+        if (tunnel.subdomain) {
+          try {
+            await WireguardManager.stopTunnel(tunnel.subdomain);
+          } catch (stopErr: any) {
+            console.error(`[Auto-Sync] Gagal menghentikan terowongan #${tunnel.id}:`, stopErr.message);
+          }
+        }
+
+        // Set status ke inactive dan tandai expires_at ke hari ini
+        await db.run(
+          "UPDATE tunnels SET status = 'inactive', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?",
+          [tunnel.id]
+        );
+      } else {
+        // Abaikan error network biasa agar tidak menghambat load data
+        console.warn(`[Auto-Sync] Gagal sinkron port tunnel #${tunnel.id}:`, e.message);
+      }
     }
   }
 }
@@ -159,6 +187,23 @@ router.post('/:id/start', async (req: Request, res: Response) => {
     const db = await getDb();
     const tunnel = await db.get('SELECT * FROM tunnels WHERE id = ?', [req.params.id]) as any;
     if (!tunnel) return res.status(404).json({ success: false, message: 'Tunnel tidak ditemukan.' });
+    if (tunnel.license_key) {
+      try {
+        const remoteInfo = await validateLicenseKey(tunnel.license_key);
+        if (remoteInfo.expires_at) {
+          await db.run("UPDATE tunnels SET expires_at = ? WHERE id = ?", [remoteInfo.expires_at, tunnel.id]);
+        }
+      } catch (e: any) {
+        if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
+          await db.run("UPDATE tunnels SET status = 'inactive', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?", [tunnel.id]);
+          return res.status(403).json({
+            success: false,
+            message: 'Gagal mengaktifkan tunnel: Lisensi terowongan ini telah kedaluwarsa.'
+          });
+        }
+        // Abaikan network error biasa agar tetap bisa start offline
+      }
+    }
 
     if (!WireguardManager.isWireGuardInstalled()) {
       return res.status(428).json({
