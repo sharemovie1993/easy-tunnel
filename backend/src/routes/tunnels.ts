@@ -41,8 +41,10 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
       if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
         console.warn(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}" terdeteksi kedaluwarsa di server lisensi. Menonaktifkan tunnel lokal secara paksa...`);
         
-        // Hentikan WireGuard service lokal jika sedang terhubung
-        if (tunnel.subdomain) {
+        // Hentikan WireGuard service lokal secara fisik hanya jika proses berjalan dengan hak akses Administrator (Admin)
+        // Jika bukan Admin, kita lewati pemanggilan stopTunnel untuk menghindari popup UAC misterius di background,
+        // namun kita tetap mengupdate status di DB lokal agar antarmuka UI merender status Nonaktif/Kedaluwarsa.
+        if (tunnel.subdomain && WireguardManager.isAdmin()) {
           try {
             await WireguardManager.stopTunnel(tunnel.subdomain);
           } catch (stopErr: any) {
