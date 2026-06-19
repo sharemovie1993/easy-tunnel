@@ -24,7 +24,9 @@
   },
   "devDependencies": {
     "electron": "^30.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "smart-buffer": "^4.2.0",
+    "socks": "^2.8.9"
   },
   "build": {
     "appId": "com.easytunnel.manager",
