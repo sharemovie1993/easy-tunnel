@@ -14,6 +14,14 @@
     "electron-dev": "npm run build-backend && electron .",
     "package": "npm run build-all && electron-builder --windows"
   },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3"
@@ -36,12 +44,11 @@
       "package.json",
       "backend/dist/**/*",
       "backend/package.json",
-      "backend/node_modules/**/*",
       "frontend/dist/**/*"
     ],
     "asar": true,
     "asarUnpack": [
-      "backend/node_modules/sqlite3/**/*"
+      "node_modules/sqlite3/**/*"
     ]
   }
 }
