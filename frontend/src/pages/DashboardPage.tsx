@@ -243,8 +243,10 @@ export default function DashboardPage() {
                         Key: <code style={{ fontSize: 11 }}>{lic.license_key}</code>
                       </div>
                       {lic.active_hostname && (
-                        <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.1)', marginBottom: 16 }}>
-                          ⚠️ Aktif di komputer: <strong>{lic.active_hostname}</strong>
+                        <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.1)', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div>⚠️ Aktif di komputer: <strong>{lic.active_hostname}</strong></div>
+                          {lic.app_name && <div>Aplikasi: <strong>{lic.app_name}</strong></div>}
+                          {lic.requested_slug && <div>Domain: <strong style={{ color: 'var(--color-accent)' }}>{lic.requested_slug}.absenta.id</strong></div>}
                         </div>
                       )}
                     </div>
