@@ -92,11 +92,12 @@ export async function releaseLicense(licenseKey: string): Promise<any> {
   return data;
 }
 
-/** Request lisensi baru via billing (order + bayar) */
+/** Request lisensi baru / perpanjangan via billing (order + bayar) */
 export async function requestNewLicense(params: {
   school_name: string;
   plan_id: string;
   payment_method: string;
+  renew_license_key?: string;
 }): Promise<any> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/request`, {
     method: 'POST',

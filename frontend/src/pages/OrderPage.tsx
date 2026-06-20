@@ -21,15 +21,18 @@ type PaymentMode = 'punya-key' | 'beli-baru';
 
 export default function OrderPage() {
   const navigate = useNavigate();
+  const queryParams = new URLSearchParams(window.location.search);
+  const renewKeyParam = queryParams.get('key') || '';
+  const isRenewMode = queryParams.get('mode') === 'renew';
 
   // Mode: apakah punya key sendiri atau beli baru
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('punya-key');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(isRenewMode ? 'beli-baru' : 'punya-key');
 
   // Step wizard
   const [step, setStep] = useState<Step>('detail');
 
   // Form fields
-  const [licenseKey, setLicenseKey] = useState('');
+  const [licenseKey, setLicenseKey] = useState(renewKeyParam);
   const [appName, setAppName] = useState('');
   const [localPort, setLocalPort] = useState<number | ''>('');
   const [subdomainSlug, setSubdomainSlug] = useState('');
@@ -40,7 +43,7 @@ export default function OrderPage() {
   // State
   const [packages, setPackages] = useState<Package[]>([]);
   const [paymentChannels, setPaymentChannels] = useState<any[]>([]);
-  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>(isRenewMode ? 'available' : 'idle');
   const [slugMessage, setSlugMessage] = useState('');
   const [keyStatus, setKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [keyInfo, setKeyInfo] = useState<any>(null);
@@ -63,8 +66,27 @@ export default function OrderPage() {
     }).catch(() => {});
   }, []);
 
+  // Load existing license info for renewal mode immediately
+  useEffect(() => {
+    if (isRenewMode && renewKeyParam) {
+      setKeyStatus('checking');
+      orderApi.validateKey(renewKeyParam).then(res => {
+        setKeyStatus('valid');
+        setKeyInfo(res.data);
+        setSchoolName(res.data.school_name || '');
+        if (res.data.requested_slug) setSubdomainSlug(res.data.requested_slug);
+        if (res.data.local_port) setLocalPort(res.data.local_port);
+        if (res.data.app_name) setAppName(res.data.app_name);
+        setSlugStatus('available');
+      }).catch(() => {
+        setKeyStatus('invalid');
+      });
+    }
+  }, [isRenewMode, renewKeyParam]);
+
   // Slug availability check (debounced)
   useEffect(() => {
+    if (isRenewMode) return;
     if (subdomainSlug.length < 3) { setSlugStatus('idle'); return; }
     setSlugStatus('checking');
     const timer = setTimeout(async () => {
@@ -77,10 +99,11 @@ export default function OrderPage() {
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [subdomainSlug]);
+  }, [subdomainSlug, isRenewMode]);
 
   // License key validation (debounced)
   useEffect(() => {
+    if (isRenewMode) return;
     if (paymentMode !== 'punya-key' || licenseKey.length < 8) { setKeyStatus('idle'); return; }
     setKeyStatus('checking');
     const timer = setTimeout(async () => {
@@ -99,10 +122,13 @@ export default function OrderPage() {
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [licenseKey, paymentMode]);
+  }, [licenseKey, paymentMode, isRenewMode]);
 
   function validateStep1(): boolean {
-    if (paymentMode === 'punya-key') {
+    if (isRenewMode) {
+      if (!licenseKey.trim()) { setError('Masukkan license key Anda.'); return false; }
+      if (keyStatus !== 'valid') { setError('License key tidak valid atau belum diverifikasi.'); return false; }
+    } else if (paymentMode === 'punya-key') {
       if (!licenseKey.trim()) { setError('Masukkan license key Anda.'); return false; }
       if (keyStatus !== 'valid') { setError('License key tidak valid atau belum diverifikasi.'); return false; }
     } else {
@@ -112,8 +138,10 @@ export default function OrderPage() {
     if (!appName.trim()) { setError('Nama aplikasi wajib diisi.'); return false; }
     if (!localPort || localPort < 1) { setError('Port lokal wajib diisi.'); return false; }
     if (!subdomainSlug.trim()) { setError('Subdomain wajib diisi.'); return false; }
-    if (slugStatus === 'taken') { setError('Subdomain sudah digunakan. Pilih yang lain.'); return false; }
-    if (slugStatus !== 'available') { setError('Tunggu pengecekan subdomain selesai.'); return false; }
+    if (!isRenewMode) {
+      if (slugStatus === 'taken') { setError('Subdomain sudah digunakan. Pilih yang lain.'); return false; }
+      if (slugStatus !== 'available') { setError('Tunggu pengecekan subdomain selesai.'); return false; }
+    }
     return true;
   }
 
@@ -129,11 +157,15 @@ export default function OrderPage() {
       // Order baru → ke payment step
       setLoading(true);
       try {
-        const res = await orderApi.newOrder({ school_name: schoolName, plan_id: selectedPlan, payment_method: paymentMethod });
+        const payload: any = { school_name: schoolName, plan_id: selectedPlan, payment_method: paymentMethod };
+        if (isRenewMode) {
+          payload.renew_license_key = licenseKey;
+        }
+        const res = await orderApi.newOrder(payload);
         setOrderResult(res);
-        setLicenseKey(res.data?.license_key || res.license_key || '');
+        setLicenseKey(res.data?.license_key || res.license_key || licenseKey);
         setStep('payment');
-        startPolling(res.data?.license_key || res.license_key);
+        startPolling(res.data?.license_key || res.license_key || licenseKey);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -227,24 +259,31 @@ export default function OrderPage() {
       {step === 'detail' && (
         <div className="card">
           {/* Mode toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-            <button
-              id="mode-punya-key"
-              className={`btn ${paymentMode === 'punya-key' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ flex: 1, justifyContent: 'center' }}
-              onClick={() => setPaymentMode('punya-key')}
-            >
-              🔑 Punya License Key
-            </button>
-            <button
-              id="mode-beli-baru"
-              className={`btn ${paymentMode === 'beli-baru' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ flex: 1, justifyContent: 'center' }}
-              onClick={() => setPaymentMode('beli-baru')}
-            >
-              🛒 Beli Berlangganan Baru
-            </button>
-          </div>
+          {!isRenewMode ? (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+              <button
+                id="mode-punya-key"
+                className={`btn ${paymentMode === 'punya-key' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => setPaymentMode('punya-key')}
+              >
+                🔑 Punya License Key
+              </button>
+              <button
+                id="mode-beli-baru"
+                className={`btn ${paymentMode === 'beli-baru' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => setPaymentMode('beli-baru')}
+              >
+                🛒 Beli Berlangganan Baru
+              </button>
+            </div>
+          ) : (
+            <div className="alert alert-info" style={{ marginBottom: 24, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontWeight: 700 }}>🔄 Mode Perpanjangan Lisensi</div>
+              <div style={{ fontSize: 12 }}>Kunci Lisensi: <code style={{ letterSpacing: 0.5 }}>{licenseKey}</code></div>
+            </div>
+          )}
 
           {paymentMode === 'punya-key' ? (
             <div className="form-group">
@@ -269,7 +308,7 @@ export default function OrderPage() {
             <>
               <div className="form-group">
                 <label className="form-label">Nama Instansi / Sekolah</label>
-                <input id="input-school-name" type="text" className="form-input" placeholder="SDN 1 Cibinong" value={schoolName} onChange={e => setSchoolName(e.target.value)} />
+                <input id="input-school-name" type="text" className="form-input" placeholder="SDN 1 Cibinong" value={schoolName} onChange={e => setSchoolName(e.target.value)} disabled={isRenewMode || loading} />
               </div>
 
               <div className="form-group">
@@ -332,7 +371,7 @@ export default function OrderPage() {
 
           <div className="form-group">
             <label className="form-label">Nama Aplikasi</label>
-            <input id="input-app-name" type="text" className="form-input" placeholder="Dapodik SMKN 1 Bogor" value={appName} onChange={e => setAppName(e.target.value)} />
+            <input id="input-app-name" type="text" className="form-input" placeholder="Dapodik SMKN 1 Bogor" value={appName} onChange={e => setAppName(e.target.value)} disabled={isRenewMode || loading} />
             <p className="form-hint">Nama untuk identifikasi tunnel ini di dashboard</p>
           </div>
 
@@ -348,15 +387,18 @@ export default function OrderPage() {
                 max={65535}
                 value={localPort}
                 onChange={e => setLocalPort(e.target.value ? parseInt(e.target.value) : '')}
+                disabled={isRenewMode || loading}
               />
             </div>
-            <p className="form-hint">
-              Port umum: {PORT_HINTS.map(h => (
-                <button key={h.port} className="btn btn-outline btn-sm" style={{ marginRight: 4, marginTop: 4 }} onClick={() => setLocalPort(h.port)}>
-                  {h.port}
-                </button>
-              ))}
-            </p>
+            {!isRenewMode && (
+              <p className="form-hint">
+                Port umum: {PORT_HINTS.map(h => (
+                  <button key={h.port} className="btn btn-outline btn-sm" style={{ marginRight: 4, marginTop: 4 }} onClick={() => setLocalPort(h.port)}>
+                    {h.port}
+                  </button>
+                ))}
+              </p>
+            )}
           </div>
 
           <div className="form-group">
@@ -369,6 +411,7 @@ export default function OrderPage() {
                 placeholder="dapodik-smkn1"
                 value={subdomainSlug}
                 onChange={e => setSubdomainSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                disabled={isRenewMode || loading}
               />
               <span className="btn btn-outline" style={{ cursor: 'default', borderLeft: 'none' }}>.absenta.id</span>
             </div>

@@ -52,18 +52,21 @@ router.get('/validate-key/:key', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/order/new — buat order lisensi baru
- * Body: { school_name, plan_id, payment_method }
+ * POST /api/order/new — buat order lisensi baru / perpanjangan
+ * Body: { school_name, plan_id, payment_method, renew_license_key }
  * Return: { license_key, invoice_number, amount, payment_instructions, ... }
  */
 router.post('/new', async (req: Request, res: Response) => {
-  const { school_name, plan_id, payment_method } = req.body;
-  if (!school_name || !plan_id || !payment_method) {
-    return res.status(400).json({ success: false, message: 'school_name, plan_id, payment_method wajib diisi.' });
+  const { school_name, plan_id, payment_method, renew_license_key } = req.body;
+  if (!plan_id || !payment_method) {
+    return res.status(400).json({ success: false, message: 'plan_id, payment_method wajib diisi.' });
+  }
+  if (!renew_license_key && !school_name) {
+    return res.status(400).json({ success: false, message: 'school_name wajib diisi.' });
   }
 
   try {
-    const result = await requestNewLicense({ school_name, plan_id, payment_method });
+    const result = await requestNewLicense({ school_name: school_name || '', plan_id, payment_method, renew_license_key });
     res.json(result);
   } catch (err: any) {
     console.error('[Order New Error]', err);

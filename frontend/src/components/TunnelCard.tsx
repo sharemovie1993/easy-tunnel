@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tunnel, tunnelApi } from '../services/api';
 import StatusBadge from './StatusBadge';
 
@@ -20,6 +21,7 @@ const PORT_LABELS: Record<number, string> = {
 };
 
 export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<'start' | 'stop' | 'delete' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatingPort, setUpdatingPort] = useState(false);
@@ -54,6 +56,17 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
         const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
         const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
         return Math.floor((d1 - d2) / (1000 * 60 * 60 * 24)) < 0;
+      })()
+    : false;
+
+  const isWarning = tunnel.expires_at
+    ? (() => {
+        const expDate = new Date(tunnel.expires_at);
+        const today = new Date();
+        const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+        const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+        const diffDays = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 3;
       })()
     : false;
 
@@ -263,6 +276,16 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
           >
             {loading === 'start' ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '▶'}
             Aktifkan
+          </button>
+        )}
+
+        {(isExpired || isWarning) && (
+          <button
+            className="btn btn-warning btn-sm"
+            onClick={() => navigate(`/order?key=${tunnel.license_key}&mode=renew`)}
+            style={{ marginLeft: 8 }}
+          >
+            🔄 Perpanjang
           </button>
         )}
 

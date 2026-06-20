@@ -279,14 +279,48 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    <button 
-                      className={lic.active_hostname ? "btn btn-outline btn-block" : "btn btn-primary btn-block"}
-                      onClick={() => openSetupModal(lic)}
-                      disabled={lic.status !== 'active' || !!lic.active_hostname}
-                      style={lic.active_hostname ? { cursor: 'not-allowed', color: 'rgba(255,255,255,0.2)' } : undefined}
-                    >
-                      {lic.active_hostname ? '🔒 Lisensi Terkunci di Device Lain' : '🖥️ Pasang Konfigurasi di PC Ini'}
-                    </button>
+                    {(() => {
+                      const expDate = lic.expires_at ? new Date(lic.expires_at) : null;
+                      const isExpired = !expDate || expDate < new Date();
+                      
+                      let isWarning = false;
+                      if (expDate) {
+                        const today = new Date();
+                        const d1 = Date.UTC(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                        const d2 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+                        const diffDays = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+                        isWarning = diffDays <= 3;
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 'auto' }}>
+                          {(isExpired || isWarning) && (
+                            <button
+                              className="btn btn-warning"
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => navigate(`/order?key=${lic.license_key}&mode=renew`)}
+                            >
+                              🔄 Perpanjang
+                            </button>
+                          )}
+                          {!isExpired && (
+                            <button 
+                              className={lic.active_hostname ? "btn btn-outline" : "btn btn-primary"}
+                              style={{ 
+                                flex: isWarning ? 1 : 'none', 
+                                width: isWarning ? 'auto' : '100%',
+                                cursor: lic.active_hostname ? 'not-allowed' : 'pointer',
+                                color: lic.active_hostname ? 'rgba(255,255,255,0.2)' : undefined
+                              }}
+                              onClick={() => openSetupModal(lic)}
+                              disabled={lic.status !== 'active' || !!lic.active_hostname}
+                            >
+                              {lic.active_hostname ? '🔒 Terkunci' : '🖥️ Pasang'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
