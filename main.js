@@ -5,6 +5,16 @@ const fs = require('fs');
 // Set environment variables for production
 process.env.NODE_ENV = 'production';
 process.env.PORT = '7080';
+process.env.FRONTEND_DIST = path.join(__dirname, 'frontend/dist');
+
+try {
+  const config = require('./config.json');
+  if (config.LICENSE_SERVER_URL) {
+    process.env.LICENSE_SERVER_URL = config.LICENSE_SERVER_URL;
+  }
+} catch (e) {
+  // Ignore
+}
 
 // Setup file logging to AppData
 const logDir = app.getPath('userData');
@@ -80,6 +90,20 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+const { execSync } = require('child_process');
+
+// Bersihkan sisa-sisa task lama (migrasi arsitektur) dan bebaskan port 7080
+try {
+  console.log('Membersihkan sisa background task versi lama...');
+  execSync('schtasks /End /TN "EasyTunnelBackend"', { stdio: 'ignore', windowsHide: true });
+  execSync('schtasks /Delete /TN "EasyTunnelBackend" /F', { stdio: 'ignore', windowsHide: true });
+  
+  // Bunuh proses apa pun yang nyangkut di port 7080
+  execSync('powershell -Command "Stop-Process -Id (Get-NetTCPConnection -LocalPort 7080).OwningProcess -Force"', { stdio: 'ignore', windowsHide: true });
+} catch (err) {
+  // Abaikan error (artinya sudah bersih)
 }
 
 // Jalankan Express server backend di dalam proses utama Electron

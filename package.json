@@ -1,59 +1,63 @@
 {
-  "name": "project-easy-tunnel",
-  "version": "1.0.0",
-  "description": "Zero-config WireGuard tunnel manager untuk mengekspos layanan lokal ke internet",
-  "private": true,
-  "main": "main.js",
-  "scripts": {
-    "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend",
-    "backend": "npm run dev --prefix backend",
-    "frontend": "npm run dev --prefix frontend",
-    "build-frontend": "npm run build --prefix frontend",
-    "build-backend": "npm run build --prefix backend",
-    "build-all": "npm run build-backend && npm run build-frontend",
-    "rebuild-native": "electron-rebuild -f -w sqlite3",
-    "electron-dev": "npm run build-backend && electron .",
-    "package": "npm run build-all && npm run rebuild-native && electron-builder --windows"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "node-fetch": "^2.7.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
-  },
-  "devDependencies": {
-    "@electron/rebuild": "^4.0.4",
-    "electron": "^30.0.0",
-    "electron-builder": "^24.13.3",
-    "smart-buffer": "^4.2.0",
-    "socks": "^2.8.9"
-  },
-  "build": {
-    "appId": "com.easytunnel.manager",
-    "productName": "Easy Tunnel",
-    "npmRebuild": false,
-    "win": {
-      "target": "nsis"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Easy Tunnel"
-    },
-    "files": [
-      "main.js",
-      "package.json",
-      "backend/dist/**/*",
-      "backend/package.json",
-      "frontend/dist/**/*"
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/sqlite3/**/*"
-    ]
-  }
+    "name":  "project-easy-tunnel",
+    "version":  "1.0.0",
+    "description":  "Zero-config WireGuard tunnel manager untuk mengekspos layanan lokal ke internet",
+    "private":  true,
+    "main":  "main.js",
+    "scripts":  {
+                    "install-all":  "npm install \u0026\u0026 npm install --prefix backend \u0026\u0026 npm install --prefix frontend",
+                    "backend":  "npm run dev --prefix backend",
+                    "frontend":  "npm run dev --prefix frontend",
+                    "build-frontend":  "npm run build --prefix frontend",
+                    "build-backend":  "npm run build --prefix backend",
+                    "build-all":  "npm run build-backend \u0026\u0026 npm run build-frontend",
+                    "rebuild-native":  "electron-rebuild -f -w sqlite3",
+                    "electron-dev":  "npm run build-backend \u0026\u0026 electron .",
+                    "package":  "node scripts/build.js"
+                },
+    "dependencies":  {
+                         "cors":  "^2.8.5",
+                         "dotenv":  "^16.4.5",
+                         "express":  "^4.19.2",
+                         "node-fetch":  "^2.7.0",
+                         "sqlite":  "^5.1.1",
+                         "sqlite3":  "^5.1.7"
+                     },
+    "devDependencies":  {
+                            "@electron/rebuild":  "^4.0.4",
+                            "electron":  "^30.0.0",
+                            "electron-builder":  "^24.13.3",
+                            "smart-buffer":  "^4.2.0",
+                            "socks":  "^2.8.9"
+                        },
+    "build":  {
+                  "appId":  "com.easytunnel.manager",
+                  "productName":  "Easy Tunnel",
+                  "npmRebuild":  false,
+                  "win":  {
+                              "target":  "nsis",
+                              "requestedExecutionLevel":  "requireAdministrator"
+                          },
+                  "nsis":  {
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "createDesktopShortcut":  true,
+                               "createStartMenuShortcut":  true,
+                               "shortcutName":  "Easy Tunnel",
+                               "include":  "build/installer.nsh"
+                           },
+                  "files":  [
+                                "main.js",
+                                "package.json",
+                                "backend/dist/**/*",
+                                "backend/package.json",
+                                "frontend/dist/**/*",
+                                "config.json"
+                            ],
+                  "asar":  true,
+                  "asarUnpack":  [
+                                     "node_modules/sqlite3/**/*",
+                                     "backend/**/*"
+                                 ]
+              }
 }
