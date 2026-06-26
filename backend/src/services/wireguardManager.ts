@@ -266,10 +266,8 @@ export class WireguardManager {
       const tunnelName = `et-${slug}`;
 
       if (!this.isAdmin()) {
-        // Jalankan stop dan uninstall secara bersamaan dalam 1 UAC prompt saja
+        // Jalankan uninstall secara langsung (otomatis menghentikan layanan)
         const psCode = `
-          Stop-Service -Name "${svcName}" -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 1
           Start-Process "${WINDOWS_WG_PATH}" -ArgumentList '/uninstalltunnelservice','${tunnelName}' -Wait
         `.trim();
         const codeBuffer = Buffer.from(psCode, 'utf16le');
@@ -286,9 +284,6 @@ export class WireguardManager {
           });
         });
       } else {
-        try {
-          execSync(`net stop "${svcName}"`, { stdio: 'pipe', windowsHide: true });
-        } catch {}
         try {
           execSync(`"${WINDOWS_WG_PATH}" /uninstalltunnelservice "${tunnelName}"`, { stdio: 'pipe', windowsHide: true });
         } catch (err: any) {
@@ -445,8 +440,6 @@ export class WireguardManager {
       const psCommands = serviceNames.map(svcName => {
         const tunnelName = svcName.includes('$') ? svcName.split('$')[1] : svcName;
         return `
-          Stop-Service -Name "${svcName}" -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 1
           Start-Process "${WINDOWS_WG_PATH}" -ArgumentList '/uninstalltunnelservice','${tunnelName}' -Wait
         `.trim();
       }).join('\n');
@@ -470,7 +463,6 @@ export class WireguardManager {
 
       for (const svcName of serviceNames) {
         const tunnelName = svcName.includes('$') ? svcName.split('$')[1] : svcName;
-        try { execSync(`net stop "${svcName}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
         try { execSync(`"${WINDOWS_WG_PATH}" /uninstalltunnelservice "${tunnelName}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
       }
       return { success: true, message: 'Layanan VPN terpilih berhasil dibersihkan.' };
