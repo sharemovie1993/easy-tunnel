@@ -14,7 +14,8 @@
     "express": "^4.19.2",
     "node-fetch": "^2.7.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -22,6 +23,7 @@
     "@types/node": "^20.12.7",
     "@types/node-fetch": "^2.6.11",
     "@types/sqlite3": "^3.1.11",
+    "@types/ws": "^8.18.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }

@@ -18,6 +18,9 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
   const db = await getDb();
   for (const tunnel of tunnels) {
     if (!tunnel.license_key) continue;
+    // Lewati sinkronisasi jika terowongan tidak aktif (menghindari spam ke server lisensi & prompt UAC Windows)
+    if (tunnel.status !== 'active') continue;
+
     try {
       const remoteInfo = await validateLicenseKey(tunnel.license_key);
       
@@ -29,6 +32,16 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
         );
       }
 
+      // Deteksi status kedaluwarsa dari properti payload sukses (dikirim oleh VPS versi baru)
+      if (remoteInfo.expired) {
+        console.warn(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}" terdeteksi kedaluwarsa di server. Memperbarui status lokal ke expired...`);
+        await db.run(
+          "UPDATE tunnels SET status = 'expired', updated_at = datetime('now', 'localtime') WHERE id = ?",
+          [tunnel.id]
+        );
+        continue;
+      }
+
       const remotePort = remoteInfo.local_port;
       if (remotePort && remotePort !== tunnel.local_port) {
         await db.run(
@@ -38,23 +51,19 @@ async function syncPortFromServer(tunnels: any[]): Promise<void> {
         console.log(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}": port lokal diperbarui ${tunnel.local_port} → ${remotePort}`);
       }
     } catch (e: any) {
-      if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
-        console.warn(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}" terdeteksi kedaluwarsa di server lisensi. Menonaktifkan tunnel lokal secara paksa...`);
-        
-        // Hentikan WireGuard service lokal secara fisik hanya jika proses berjalan dengan hak akses Administrator (Admin)
-        // Jika bukan Admin, kita lewati pemanggilan stopTunnel untuk menghindari popup UAC misterius di background,
-        // namun kita tetap mengupdate status di DB lokal agar antarmuka UI merender status Nonaktif/Kedaluwarsa.
-        if (tunnel.subdomain && WireguardManager.isAdmin()) {
-          try {
-            await WireguardManager.stopTunnel(tunnel.subdomain);
-          } catch (stopErr: any) {
-            console.error(`[Auto-Sync] Gagal menghentikan terowongan #${tunnel.id}:`, stopErr.message);
-          }
-        }
+      const msg = (e.message || '').toLowerCase();
+      // Deteksi expired: pesan eksplisit ATAU "tidak ditemukan"/"tidak valid" dari server lisensi
+      const isExpiredError =
+        msg.includes('kedaluwarsa') || msg.includes('expired') ||
+        msg.includes('tidak ditemukan') || msg.includes('not found') ||
+        msg.includes('tidak valid') || msg.includes('invalid');
 
-        // Set status ke inactive dan tandai expires_at ke hari ini
+      if (isExpiredError) {
+        console.warn(`[Auto-Sync] Tunnel #${tunnel.id} "${tunnel.name}" terdeteksi kedaluwarsa atau tidak valid. Memperbarui status lokal ke expired...`);
+        
+        // Set status ke expired di DB lokal
         await db.run(
-          "UPDATE tunnels SET status = 'inactive', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?",
+          "UPDATE tunnels SET status = 'expired', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?",
           [tunnel.id]
         );
       } else {
@@ -149,7 +158,7 @@ router.post('/setup', async (req: Request, res: Response) => {
     });
 
     // 2. Tulis file .conf WireGuard ke disk lokal
-    const slug = tunnelData.subdomain.replace('.absenta.id', '');
+    const slug = tunnelData.subdomain.split('.')[0];
     const confPath = WireguardManager.writeConfig(slug, tunnelData.config);
 
     // 3. Simpan ke database lokal
@@ -195,9 +204,16 @@ router.post('/:id/start', async (req: Request, res: Response) => {
         if (remoteInfo.expires_at) {
           await db.run("UPDATE tunnels SET expires_at = ? WHERE id = ?", [remoteInfo.expires_at, tunnel.id]);
         }
+        if (remoteInfo.expired) {
+          await db.run("UPDATE tunnels SET status = 'expired', updated_at = datetime('now', 'localtime') WHERE id = ?", [tunnel.id]);
+          return res.status(403).json({
+            success: false,
+            message: 'Gagal mengaktifkan tunnel: Lisensi terowongan ini telah kedaluwarsa.'
+          });
+        }
       } catch (e: any) {
         if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
-          await db.run("UPDATE tunnels SET status = 'inactive', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?", [tunnel.id]);
+          await db.run("UPDATE tunnels SET status = 'expired', expires_at = date('now'), updated_at = datetime('now', 'localtime') WHERE id = ?", [tunnel.id]);
           return res.status(403).json({
             success: false,
             message: 'Gagal mengaktifkan tunnel: Lisensi terowongan ini telah kedaluwarsa.'
@@ -244,6 +260,21 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
   }
 });
 
+/** GET /api/tunnels/:id/diagnose */
+router.get('/:id/diagnose', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    const tunnel = await db.get('SELECT * FROM tunnels WHERE id = ?', [req.params.id]) as any;
+    if (!tunnel) return res.status(404).json({ success: false, message: 'Tunnel tidak ditemukan.' });
+
+    const result = await WireguardManager.diagnoseTunnel(tunnel.subdomain);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('[Tunnel Diagnose Error]', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 /** DELETE /api/tunnels/:id */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
@@ -257,7 +288,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
         await releaseLicense(tunnel.license_key);
       }
     } catch (releaseErr: any) {
-      console.warn('[Tunnel Delete Warning] Gagal melepas kunci perangkat di server lisensi (kemungkinan offline):', releaseErr.message);
+      const msg = releaseErr.message || '';
+      // Jika error karena lisensi memang sudah tidak ada/dilepas di server, kita boleh lanjut hapus lokal.
+      // Tapi jika error karena RTO / offline, KITA HARUS BATALKAN agar lisensi tidak terkunci abadi.
+      if (!msg.toLowerCase().includes('tidak ditemukan') && !msg.toLowerCase().includes('sudah dilepas')) {
+        throw new Error(`Koneksi ke server pusat gagal (${msg}). Penghapusan dibatalkan untuk mencegah lisensi Anda terkunci/hangus secara permanen. Pastikan internet Anda aktif lalu coba lagi.`);
+      }
     }
 
     // 2. Hapus terowongan lokal
@@ -272,9 +308,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-/** POST /api/tunnels/:id/change-port */
-router.post('/:id/change-port', async (req: Request, res: Response) => {
-  const { local_port } = req.body;
+/** POST /api/tunnels/:id/edit */
+router.post('/:id/edit', async (req: Request, res: Response) => {
+  const { local_port, app_name } = req.body;
   if (!local_port) {
     return res.status(400).json({ success: false, message: 'local_port wajib diisi.' });
   }
@@ -291,14 +327,41 @@ router.post('/:id/change-port', async (req: Request, res: Response) => {
 
     // 1. Hubungi server lisensi untuk update port
     const { updateLicensePort } = require('../services/licenseClient');
-    await updateLicensePort(tunnel.license_key, portNum);
+    await updateLicensePort(tunnel.license_key, portNum, app_name);
 
     // 2. Update database lokal
-    await db.run('UPDATE tunnels SET local_port = ?, updated_at = datetime(\'now\', \'localtime\') WHERE id = ?', [portNum, tunnel.id]);
+    let query = 'UPDATE tunnels SET local_port = ?, updated_at = datetime(\'now\', \'localtime\')';
+    let params: any[] = [portNum];
 
-    res.json({ success: true, message: `Port lokal berhasil diubah ke ${portNum} dan ter-update di server lisensi VPS.` });
+    if (app_name && app_name.trim() !== '') {
+      query = 'UPDATE tunnels SET local_port = ?, name = ?, updated_at = datetime(\'now\', \'localtime\')';
+      params = [portNum, app_name.trim()];
+    }
+    
+    query += ' WHERE id = ?';
+    params.push(tunnel.id);
+
+    await db.run(query, params);
+
+    res.json({ success: true, message: `Konfigurasi berhasil disimpan dan ter-update di server pusat.` });
   } catch (err: any) {
-    console.error('[Tunnel Change Port Error]', err);
+    console.error('[Tunnel Edit Error]', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** POST /api/tunnels/force-release */
+router.post('/force-release', async (req: Request, res: Response) => {
+  const { license_key } = req.body;
+  if (!license_key) {
+    return res.status(400).json({ success: false, message: 'license_key wajib diisi.' });
+  }
+
+  try {
+    await releaseLicense(license_key);
+    res.json({ success: true, message: 'Kunci lisensi berhasil dilepas dari server pusat.' });
+  } catch (err: any) {
+    console.error('[Tunnel Force Release Error]', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

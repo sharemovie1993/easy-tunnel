@@ -36,7 +36,11 @@
                   "npmRebuild":  false,
                   "win":  {
                               "target":  "nsis",
-                              "requestedExecutionLevel":  "requireAdministrator"
+                              "requestedExecutionLevel":  "requireAdministrator",
+                              "publisherName": "Nama Publisher Anda",
+                              "icon": "build/icon.ico",
+                              "certificateFile": "build/certificate.pfx",
+                              "certificatePassword": "g1g1G1NGSUL*12"
                           },
                   "nsis":  {
                                "oneClick":  false,
@@ -44,7 +48,11 @@
                                "createDesktopShortcut":  true,
                                "createStartMenuShortcut":  true,
                                "shortcutName":  "Easy Tunnel",
-                               "include":  "build/installer.nsh"
+                               "include":  "build/installer.nsh",
+                               "installerIcon": "build/icon.ico",
+                               "uninstallerIcon": "build/icon.ico",
+                               "installerHeaderIcon": "build/icon.ico",
+                               "runAfterFinish": true
                            },
                   "files":  [
                                 "main.js",

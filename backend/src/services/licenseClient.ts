@@ -38,6 +38,7 @@ export interface LicenseInfo {
   local_port: number | null;
   app_name: string | null;
   active_hostname?: string | null;
+  expired?: boolean;
 }
 
 /** Ambil daftar paket Easy Tunnel dari server lisensi */
@@ -98,16 +99,24 @@ export async function requestNewLicense(params: {
   plan_id: string;
   payment_method: string;
   renew_license_key?: string;
+  subdomain_slug?: string;
+  requested_slug?: string;
+  app_name?: string;
+  local_port?: number;
 }): Promise<any> {
+  const bodyData = {
+    ...params,
+    product_id: 'easy-tunnel',
+    device_limit: 1,
+    is_unlimited: 0,
+    requested_slug: params.requested_slug || params.subdomain_slug,
+    subdomain_slug: params.subdomain_slug || params.requested_slug
+  };
+
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...params,
-      product_id: 'easy-tunnel',
-      device_limit: 1,
-      is_unlimited: 0
-    }),
+    body: JSON.stringify(bodyData),
     signal: AbortSignal.timeout(15000)
   });
   const data = await res.json() as any;
@@ -124,6 +133,15 @@ export async function checkLicenseStatus(licenseKey: string): Promise<any> {
   return data;
 }
 
+/** Cek status invoice (untuk polling setelah order) */
+export async function checkInvoiceStatus(invoiceNumber: string): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/invoice-status/${encodeURIComponent(invoiceNumber.trim())}`, {
+    signal: AbortSignal.timeout(8000)
+  });
+  const data = await res.json() as any;
+  return data;
+}
+
 /** Cek ketersediaan subdomain slug */
 export async function checkSlugAvailability(slug: string): Promise<{ available: boolean; message: string }> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/check-slug/${encodeURIComponent(slug)}`, {
@@ -134,11 +152,15 @@ export async function checkSlugAvailability(slug: string): Promise<{ available: 
 }
 
 /** Update port lisensi di server */
-export async function updateLicensePort(licenseKey: string, localPort: number): Promise<any> {
+export async function updateLicensePort(licenseKey: string, localPort: number, appName?: string): Promise<any> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/update-port`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ license_key: licenseKey.trim(), local_port: localPort }),
+    body: JSON.stringify({
+      license_key: licenseKey.trim(),
+      local_port: localPort,
+      app_name: appName ? appName.trim() : undefined
+    }),
     signal: AbortSignal.timeout(10000)
   });
   const data = await res.json() as any;

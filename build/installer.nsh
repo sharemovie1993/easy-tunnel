@@ -15,7 +15,7 @@
   nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-NetTCPConnection -LocalPort 7080 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $$_.OwningProcess -Force -ErrorAction SilentlyContinue }"'
 
   # Hentikan dan uninstall semua layanan WireGuard et-* yang menggantung
-  nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Service | Where-Object { $$_.Name -like ''WireGuardTunnel$$et-*'' } | ForEach-Object { Stop-Service $$_.Name -Force -ErrorAction SilentlyContinue; & ''C:\Program Files\WireGuard\wireguard.exe'' /uninstalltunnelservice ($$_.Name -replace ''WireGuardTunnel\$$'', '''') }"'
+  nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Service -Name ''WireGuardTunnel*et-*'' -ErrorAction SilentlyContinue | ForEach-Object { & ''C:\Program Files\WireGuard\wireguard.exe'' /uninstalltunnelservice ($$_.Name -replace ''WireGuardTunnel\$$'', '''') }"'
 !macroend
 
 !macro customUninstall
@@ -29,7 +29,7 @@
   nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-NetTCPConnection -LocalPort 7080 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $$_.OwningProcess -Force -ErrorAction SilentlyContinue }"'
 
   # Uninstall semua layanan WireGuard et-* yang terpasang
-  nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Service | Where-Object { $$_.Name -like ''WireGuardTunnel$$et-*'' } | ForEach-Object { Stop-Service $$_.Name -Force -ErrorAction SilentlyContinue; & ''C:\Program Files\WireGuard\wireguard.exe'' /uninstalltunnelservice ($$_.Name -replace ''WireGuardTunnel\$$'', '''') }"'
+  nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Service -Name ''WireGuardTunnel*et-*'' -ErrorAction SilentlyContinue | ForEach-Object { & ''C:\Program Files\WireGuard\wireguard.exe'' /uninstalltunnelservice ($$_.Name -replace ''WireGuardTunnel\$$'', '''') }"'
 !macroend
 
 

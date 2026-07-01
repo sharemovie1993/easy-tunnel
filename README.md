@@ -98,7 +98,8 @@ Jika Anda ingin melakukan compile/build installer Windows (`.exe`) sendiri dari 
 3. Isi detail aplikasi (nama, port, subdomain)
 4. Klik **"Lanjut ke Pembayaran"**
 5. Ikuti instruksi pembayaran, konfirmasi via WhatsApp
-6. Setelah dikonfirmasi, tunnel aktif **otomatis**!
+6. Setelah pembayaran sukses terkonfirmasi, lisensi Anda akan langsung terbit dalam status **Aktif (Belum Dipasang)**. 
+7. Anda dapat memasang (*setup*) terowongan tersebut secara mandiri di komputer pilihan Anda dengan menekan tombol **"Pasang Tunnel di PC Ini"** pada Dashboard.
 
 ### 3. Port Aplikasi Umum
 | Aplikasi | Port Lokal |
@@ -137,7 +138,7 @@ Project-Easy-Tunnel/
 │   │   │   └── system.ts       # Info OS & WireGuard
 │   │   └── services/
 │   │       ├── wireguardManager.ts  # WireGuard engine
-│   │       └── licenseClient.ts     # HTTP → api.absenta.id
+│   │       └── licenseClient.ts     # HTTP → License Server (Dinamis sesuai config.json)
 │   ├── tunnels/                # File *.conf WireGuard per tunnel
 │   └── local.db               # Database SQLite lokal
 │
@@ -178,13 +179,15 @@ Project-Easy-Tunnel/
 
 ---
 
-## Arsitektur VPN
+## Arsitektur VPN & Lisensi Dinamis
+
+Easy Tunnel mendukung kustomisasi penuh alamat **Server Lisensi** saat melakukan *build* aplikasi. Alamat server yang ditargetkan akan ditulis ke berkas `config.json` lokal dan dihormati oleh backend Express dan antarmuka frontend secara dinamis.
 
 ```
 Browser Pengguna
       │ HTTPS
       ▼
-slug.absenta.id (Caddy di VPS)
+slug.<domain-lisensi-aktif> (Caddy di VPS)
       │ WireGuard Tunnel (UDP 51820)
       ▼
 PC Lokal (10.0.0.X)

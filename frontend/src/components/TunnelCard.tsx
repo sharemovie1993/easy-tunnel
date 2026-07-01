@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tunnel, tunnelApi } from '../services/api';
+import { Tunnel, tunnelApi, systemApi } from '../services/api';
 import StatusBadge from './StatusBadge';
+import { getBaseDomain } from '../utils/domainUtils';
 
 interface TunnelCardProps {
   tunnel: Tunnel;
@@ -28,11 +29,66 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
   const [isEditingPort, setIsEditingPort] = useState(false);
   const [editPortValue, setEditPortValue] = useState(String(tunnel.local_port || ''));
 
+  const [installing, setInstalling] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [installMsg, setInstallMsg] = useState<string | null>(null);
+  const [wgInstalled, setWgInstalled] = useState<boolean | null>(null);
+  const [baseDomain, setBaseDomain] = useState('absenta.id');
+
+  // Cek status WireGuard saat card dimuat
+  useEffect(() => {
+    systemApi.wireGuardStatus()
+      .then(res => setWgInstalled(res.installed))
+      .catch(() => setWgInstalled(null));
+
+    systemApi.info()
+      .then(res => {
+        if (res?.data?.license_server_url) {
+          setBaseDomain(getBaseDomain(res.data.license_server_url));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleInstallWireGuard() {
+    setInstalling(true);
+    setInstallMsg(null);
+    try {
+      const res = await systemApi.installWireGuard();
+      setInstallMsg(res.message);
+      if (res.installing) {
+        setPolling(true);
+        const interval = setInterval(async () => {
+          try {
+            const status = await systemApi.wireGuardStatus();
+            if (status.installed) {
+              setWgInstalled(true);
+              setInstallMsg('✅ WireGuard berhasil diinstall!');
+              clearInterval(interval);
+              setPolling(false);
+              setError(null);
+              onRefresh();
+            }
+          } catch {}
+        }, 3000);
+      } else if (res.success) {
+        setWgInstalled(true);
+        setInstallMsg('✅ WireGuard berhasil diinstall!');
+        setError(null);
+        onRefresh();
+      }
+    } catch (err: any) {
+      setInstallMsg('❌ ' + err.message);
+    } finally {
+      setInstalling(false);
+    }
+  }
+
   async function handlePortChange(newPort: number) {
     setUpdatingPort(true);
     setError(null);
     try {
-      await tunnelApi.changePort(tunnel.id, newPort);
+      await tunnelApi.editTunnel(tunnel.id, newPort, tunnel.name || '');
       onRefresh();
     } catch (err: any) {
       setError(err.message);
@@ -42,7 +98,7 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
   }
 
   const isConnected = tunnel.wg_status?.status === 'connected';
-  const subdomain = tunnel.subdomain ? `${tunnel.subdomain}.absenta.id` : null;
+  const subdomain = tunnel.subdomain ? `${tunnel.subdomain}.${baseDomain}` : null;
   const portLabel = tunnel.local_port ? PORT_LABELS[tunnel.local_port] : null;
 
   const expiresAt = tunnel.expires_at
@@ -132,6 +188,32 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
         </div>
         <StatusBadge status={loading === 'start' ? 'loading' : (tunnel.wg_status?.status || 'disconnected')} />
       </div>
+
+      {/* Info detail - TAMPIL DI MODE AKTIF/TERHUBUNG */}
+      {isConnected && (tunnel.app_name || subdomain || tunnel.local_port) && (
+        <div style={{
+          fontSize: 12,
+          color: 'var(--color-text)',
+          background: 'rgba(34, 197, 94, 0.06)',
+          padding: '8px 12px',
+          borderRadius: 6,
+          border: '1px solid rgba(34, 197, 94, 0.15)',
+          marginBottom: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4
+        }}>
+          {tunnel.app_name && (
+            <div>🖥️ Aplikasi: <strong>{tunnel.app_name}</strong></div>
+          )}
+          {subdomain && (
+            <div>🌐 Domain: <strong style={{ color: 'var(--color-accent)' }}>{subdomain}</strong></div>
+          )}
+          {tunnel.local_port && (
+            <div>🔌 Port Lokal: <strong>{tunnel.local_port}{portLabel ? ` (${portLabel})` : ''}</strong></div>
+          )}
+        </div>
+      )}
 
       <div className="tunnel-card-meta">
         {tunnel.local_port && (
@@ -250,8 +332,41 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
       </div>
 
       {error && (
-        <div className="alert alert-danger" style={{ marginTop: 8, marginBottom: 0 }}>
-          ⚠️ {error}
+        <div className="alert alert-danger" style={{ marginTop: 8, marginBottom: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+          {error.toLowerCase().includes('wireguard belum terinstall') && (
+            <div style={{ marginTop: 4 }}>
+              {installMsg && (
+                <div style={{ 
+                  fontSize: 12, 
+                  color: installMsg.startsWith('❌') ? 'var(--color-danger)' : 'var(--color-success)', 
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  textAlign: 'left'
+                }}>
+                  {installMsg}
+                </div>
+              )}
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleInstallWireGuard}
+                disabled={installing || polling}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {installing || polling ? (
+                  <>
+                    <span className="spinner" style={{ width: 12, height: 12, marginRight: 6 }} />
+                    {polling ? 'Menginstall...' : 'Memulai download...'}
+                  </>
+                ) : (
+                  '⬇️ Auto-Install WireGuard Now'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -300,6 +415,43 @@ export default function TunnelCard({ tunnel, onRefresh }: TunnelCardProps) {
           Hapus
         </button>
       </div>
+
+      {/* Tombol Auto-Install WireGuard — tampil permanen jika WireGuard belum terinstall */}
+      {wgInstalled === false && !error && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: '1px solid var(--color-border)'
+        }}>
+          {installMsg && (
+            <div style={{ 
+              fontSize: 12, 
+              color: installMsg.startsWith('❌') ? 'var(--color-danger)' : 'var(--color-success)', 
+              marginBottom: 8,
+              fontWeight: 600
+            }}>
+              {installMsg}
+            </div>
+          )}
+          {wgInstalled === false && !installMsg?.startsWith('✅') && (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={handleInstallWireGuard}
+              disabled={installing || polling}
+              style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}
+            >
+              {installing || polling ? (
+                <>
+                  <span className="spinner" style={{ width: 12, height: 12, marginRight: 6 }} />
+                  {polling ? 'Menginstall WireGuard...' : 'Memulai download...'}
+                </>
+              ) : (
+                '⬇️ Auto-Install WireGuard'
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

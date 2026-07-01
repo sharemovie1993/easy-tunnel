@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import './index.css';
 import DashboardPage from './pages/DashboardPage';
 import OrderPage from './pages/OrderPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import { systemApi } from './services/api';
 
 interface SidebarProps {
   onLogout: () => void;
   operatorNumber: string;
+  licenseServerUrl?: string;
 }
 
-function Sidebar({ onLogout, operatorNumber }: SidebarProps) {
+function Sidebar({ onLogout, operatorNumber, licenseServerUrl }: SidebarProps) {
   const navItems = [
     { to: '/',         icon: '🏠', label: 'Dashboard' },
     { to: '/order',    icon: '➕', label: 'Tambah Tunnel' },
@@ -57,6 +59,28 @@ function Sidebar({ onLogout, operatorNumber }: SidebarProps) {
           <span>Keluar Sesi</span>
         </button>
 
+        {licenseServerUrl && (
+          <div style={{ 
+            fontSize: 10, 
+            color: 'var(--color-text-dim)', 
+            textAlign: 'center', 
+            background: 'rgba(34, 197, 94, 0.05)', 
+            border: '1px solid rgba(34, 197, 94, 0.15)',
+            borderRadius: '6px',
+            padding: '6px 8px',
+            margin: '0 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
+          }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px rgba(34, 197, 94, 0.5)' }}></span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={licenseServerUrl}>
+              Server: {licenseServerUrl.replace(/^https?:\/\//, '')}
+            </span>
+          </div>
+        )}
+
         <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textAlign: 'center' }}>
           Easy Tunnel v1.0.0
         </div>
@@ -68,6 +92,19 @@ function Sidebar({ onLogout, operatorNumber }: SidebarProps) {
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('@easy_tunnel_token'));
   const [operator, setOperator] = useState<string>(localStorage.getItem('@easy_tunnel_operator') || '');
+  const [licenseServerUrl, setLicenseServerUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (token) {
+      systemApi.info()
+        .then(res => {
+          if (res?.data?.license_server_url) {
+            setLicenseServerUrl(res.data.license_server_url);
+          }
+        })
+        .catch(err => console.warn('Failed to fetch system info:', err));
+    }
+  }, [token]);
 
   const handleLoginSuccess = (newToken: string, number: string) => {
     // Format number to clean format
@@ -83,6 +120,7 @@ function App() {
     localStorage.removeItem('@easy_tunnel_operator');
     setToken(null);
     setOperator('');
+    setLicenseServerUrl('');
   };
 
   if (!token) {
@@ -92,7 +130,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-layout">
-        <Sidebar onLogout={handleLogout} operatorNumber={operator} />
+        <Sidebar onLogout={handleLogout} operatorNumber={operator} licenseServerUrl={licenseServerUrl} />
         <main className="main-content">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
