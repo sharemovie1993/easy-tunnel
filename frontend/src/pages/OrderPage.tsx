@@ -166,7 +166,8 @@ export default function OrderPage() {
           payment_method: paymentMethod,
           subdomain_slug: subdomainSlug,
           app_name: appName,
-          local_port: localPort
+          local_port: localPort,
+          phone_number: localStorage.getItem('@easy_tunnel_operator') || undefined
         };
         if (isRenewMode) {
           payload.renew_license_key = licenseKey;

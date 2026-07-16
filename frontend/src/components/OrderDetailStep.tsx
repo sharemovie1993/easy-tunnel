@@ -64,6 +64,7 @@ export default function OrderDetailStep({
   // App select dropdown states & handlers
   const [selectedAppOption, setSelectedAppOption] = useState<string>('');
   const [customAppName, setCustomAppName] = useState('');
+  const [isPersonal, setIsPersonal] = useState(schoolName.toLowerCase().startsWith('personal') || false);
 
   const handleAppOptionChange = (val: string) => {
     setSelectedAppOption(val);
@@ -162,8 +163,53 @@ export default function OrderDetailStep({
       ) : (
         <>
           <div className="form-group">
-            <label className="form-label">Nama Instansi / Sekolah</label>
-            <input id="input-school-name" type="text" className="form-input" placeholder="SDN 1 Cibinong" value={schoolName} onChange={e => setSchoolName(e.target.value)} disabled={isRenewMode || loading} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>
+                {isPersonal ? 'Nama Lengkap / Personal' : 'Nama Instansi / Sekolah'}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-dim)', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={isPersonal}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setIsPersonal(checked);
+                    if (checked) {
+                      // Jika dicentang dan nama belum ada prefix personal, bantu isi
+                      if (!schoolName.toLowerCase().startsWith('personal')) {
+                        setSchoolName(schoolName ? `Personal - ${schoolName}` : 'Personal');
+                      }
+                    } else {
+                      // Jika tidak dicentang, bersihkan prefix "Personal - "
+                      if (schoolName.startsWith('Personal - ')) {
+                        setSchoolName(schoolName.replace('Personal - ', ''));
+                      } else if (schoolName === 'Personal') {
+                        setSchoolName('');
+                      }
+                    }
+                  }}
+                  disabled={isRenewMode || loading}
+                  style={{ cursor: 'pointer' }}
+                />
+                Daftar sebagai Personal / Pribadi
+              </label>
+            </div>
+            <input
+              id="input-school-name"
+              type="text"
+              className="form-input"
+              placeholder={isPersonal ? 'Nama Lengkap Anda (e.g. Budi Santoso)' : 'SDN 1 Cibinong'}
+              value={isPersonal && schoolName.startsWith('Personal - ') ? schoolName.replace('Personal - ', '') : schoolName}
+              onChange={e => {
+                const val = e.target.value;
+                if (isPersonal) {
+                  setSchoolName(val ? `Personal - ${val}` : 'Personal');
+                } else {
+                  setSchoolName(val);
+                }
+              }}
+              disabled={isRenewMode || loading}
+            />
           </div>
 
           <div className="form-group">

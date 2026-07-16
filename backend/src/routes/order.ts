@@ -58,7 +58,7 @@ router.get('/validate-key/:key', async (req: Request, res: Response) => {
  * Return: { license_key, invoice_number, amount, payment_instructions, ... }
  */
 router.post('/new', async (req: Request, res: Response) => {
-  const { school_name, plan_id, payment_method, renew_license_key, subdomain_slug, app_name, local_port } = req.body;
+  const { school_name, plan_id, payment_method, renew_license_key, subdomain_slug, app_name, local_port, phone_number } = req.body;
   if (!plan_id || !payment_method) {
     return res.status(400).json({ success: false, message: 'plan_id, payment_method wajib diisi.' });
   }
@@ -74,7 +74,8 @@ router.post('/new', async (req: Request, res: Response) => {
       renew_license_key,
       subdomain_slug,
       app_name,
-      local_port: local_port ? parseInt(local_port, 10) : undefined
+      local_port: local_port ? parseInt(local_port, 10) : undefined,
+      phone_number
     });
 
     // Sesuaikan port dan nama aplikasi ke server lisensi sesaat setelah lisensi dibuat

@@ -48,7 +48,48 @@ export async function fetchPackages(): Promise<EasyTunnelPackage[]> {
   });
   const data = await res.json() as any;
   if (!data.success) throw new Error(data.message || 'Gagal mengambil paket.');
-  return data.data;
+
+  // Transformasi format server → format frontend
+  return (data.data as any[]).map((pkg: any): EasyTunnelPackage => {
+    // Tentukan harga & durasi berdasarkan billingPeriod
+    let price = '';
+    let duration = '';
+    let badge: string | null = null;
+
+    const period = (pkg.billingPeriod || '').toUpperCase();
+    if (period === 'YEAR') {
+      // Untuk tahunan, tampilkan harga per tahun (priceYearly)
+      const yearly = pkg.priceYearly ?? (pkg.priceMonthly ? pkg.priceMonthly * 12 : 0);
+      price = `Rp ${yearly.toLocaleString('id-ID')}`;
+      duration = 'tahun';
+      badge = 'Hemat';
+    } else if (period === 'MONTH') {
+      // Cek apakah ini semester (6 bulan) atau bulanan
+      // Semester biasanya ditandai dengan name mengandung 'Semester' atau harga per bulan yang lebih murah dari bulanan
+      const name: string = pkg.name || '';
+      if (name.toLowerCase().includes('semester')) {
+        const semestrPrice = pkg.priceYearly ?? (pkg.priceMonthly ? pkg.priceMonthly * 6 : 0);
+        price = `Rp ${semestrPrice.toLocaleString('id-ID')}`;
+        duration = '6 bulan';
+        badge = null;
+      } else {
+        price = `Rp ${(pkg.priceMonthly ?? 0).toLocaleString('id-ID')}`;
+        duration = 'bulan';
+        badge = null;
+      }
+    } else {
+      price = `Rp ${(pkg.priceMonthly ?? 0).toLocaleString('id-ID')}`;
+      duration = 'bulan';
+    }
+
+    return {
+      id: pkg.id,
+      title: pkg.name || pkg.title || pkg.id,
+      price,
+      duration,
+      badge,
+    };
+  });
 }
 
 /** Validasi license key dari server lisensi */
@@ -103,6 +144,7 @@ export async function requestNewLicense(params: {
   requested_slug?: string;
   app_name?: string;
   local_port?: number;
+  phone_number?: string;
 }): Promise<any> {
   const bodyData = {
     ...params,
