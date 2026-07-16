@@ -70,7 +70,10 @@ export default function HistoryPage({ licenseServerUrl }: HistoryPageProps) {
     if (status === 'paid' || status === 'lunas') {
       return <span className="status-badge connected">Lunas</span>;
     }
-    return <span className="status-badge disconnected">Menunggu Pembayaran</span>;
+    if (status === 'expired' || status === 'cancelled') {
+      return <span className="status-badge disconnected" style={{ filter: 'grayscale(0.5)' }}>Kedaluwarsa</span>;
+    }
+    return <span className="status-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>Menunggu Pembayaran</span>;
   };
 
   const parseInstructions = (inv: Invoice) => {
