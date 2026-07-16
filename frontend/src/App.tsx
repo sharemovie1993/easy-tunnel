@@ -137,7 +137,7 @@ function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/order" element={<OrderPage />} />
-            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/history" element={<HistoryPage licenseServerUrl={licenseServerUrl} />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
