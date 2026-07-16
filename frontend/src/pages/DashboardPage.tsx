@@ -116,7 +116,9 @@ export default function DashboardPage() {
 
   // Merge: buat list unified (satu entry per lisensi cloud)
   const mergedItems = useMemo(() => {
-    return cloudLicenses.map(lic => {
+    // Saring lisensi yang berstatus pending (belum dibayar) agar tidak tampil di dasbor
+    const activeLicenses = cloudLicenses.filter(lic => lic.status !== 'pending');
+    return activeLicenses.map(lic => {
       const localTunnel = tunnels.find(t => t.license_key === lic.license_key) || null;
       const wgStatus = localTunnel?.wg_status?.status || null;
       const isConnected = wgStatus === 'connected';
