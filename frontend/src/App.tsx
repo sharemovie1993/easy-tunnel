@@ -4,6 +4,7 @@ import './index.css';
 import DashboardPage from './pages/DashboardPage';
 import OrderPage from './pages/OrderPage';
 import SettingsPage from './pages/SettingsPage';
+import HistoryPage from './pages/HistoryPage';
 import LoginPage from './pages/LoginPage';
 import { systemApi } from './services/api';
 
@@ -17,6 +18,7 @@ function Sidebar({ onLogout, operatorNumber, licenseServerUrl }: SidebarProps) {
   const navItems = [
     { to: '/',         icon: '🏠', label: 'Dashboard' },
     { to: '/order',    icon: '➕', label: 'Tambah Tunnel' },
+    { to: '/history',  icon: '📄', label: 'Riwayat Transaksi' },
     { to: '/settings', icon: '⚙️', label: 'Pengaturan' }
   ];
 
@@ -135,6 +137,7 @@ function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/order" element={<OrderPage />} />
+            <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
