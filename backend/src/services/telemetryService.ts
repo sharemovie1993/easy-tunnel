@@ -1,4 +1,5 @@
 import { getDb } from '../db';
+import { WireguardManager } from './wireguardManager';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
@@ -18,8 +19,16 @@ async function sendTelemetry() {
   try {
     const db = await getDb();
     
-    // Fetch all active tunnels (running)
-    const activeTunnels = await db.all("SELECT license_key, name FROM tunnels WHERE status = 'active'");
+    // Fetch all tunnels in database
+    const tunnels = await db.all("SELECT license_key, name, subdomain, status FROM tunnels");
+    
+    // Filter only running/connected tunnels
+    const activeTunnels = tunnels.filter(tunnel => {
+      const isRunning = (tunnel.subdomain && WireguardManager.getStatus(tunnel.subdomain).status === 'connected') || 
+                        tunnel.status === 'active';
+      return isRunning;
+    });
+
     if (activeTunnels.length === 0) {
       return;
     }
