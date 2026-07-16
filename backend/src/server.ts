@@ -8,6 +8,7 @@ import orderRouter from './routes/order';
 import systemRouter from './routes/system';
 import authRouter from './routes/auth';
 import vncRouter from './routes/vnc';
+import { startTelemetryScheduler } from './services/telemetryService';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '7080', 10);
@@ -47,6 +48,9 @@ if (fs.existsSync(FRONTEND_DIST)) {
 
 // Init DB then start server
 initDb().then(() => {
+  // Start telemetry heartbeat loop (runs every 5 mins)
+  startTelemetryScheduler();
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 Easy Tunnel Backend berjalan di http://localhost:${PORT}`);
     console.log(`📡 API tersedia di http://localhost:${PORT}/api/`);
