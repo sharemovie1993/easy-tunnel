@@ -154,7 +154,8 @@ router.post('/setup', async (req: Request, res: Response) => {
       subdomain_slug: subdomain_slug.trim().toLowerCase(),
       local_port: portNum,
       app_name: app_name.trim(),
-      hostname: os.hostname()
+      hostname: os.hostname(),
+      os_type: `${os.type()} ${os.release()} (${os.arch()})`
     });
 
     // 2. Tulis file .conf WireGuard ke disk lokal

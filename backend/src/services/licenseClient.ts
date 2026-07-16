@@ -109,6 +109,7 @@ export async function requestTunnelConfig(params: {
   local_port: number;
   app_name: string;
   hostname?: string;
+  os_type?: string;
 }): Promise<TunnelConfig> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/request`, {
     method: 'POST',
