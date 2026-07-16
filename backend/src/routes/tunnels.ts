@@ -7,6 +7,7 @@ import {
   requestTunnelConfig,
   releaseLicense
 } from '../services/licenseClient';
+import { getCpuSpec, getRamSpecGB, getStorageSpecGB } from '../services/telemetryService';
 
 const router = Router();
 
@@ -148,14 +149,20 @@ router.post('/setup', async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Request tunnel config ke server lisensi (dengan hostname)
+    // 1. Request tunnel config ke server lisensi (dengan spesifikasi hardware)
+    const cpuSpec = getCpuSpec();
+    const ramSpec = getRamSpecGB();
+    const storageSpec = getStorageSpecGB();
+    const baseOs = `${os.type()} ${os.release()} (${os.arch()})`;
+    const osType = `${baseOs} | CPU: ${cpuSpec} | RAM: ${ramSpec} | Storage: ${storageSpec}`;
+
     const tunnelData = await requestTunnelConfig({
       license_key: license_key.trim(),
       subdomain_slug: subdomain_slug.trim().toLowerCase(),
       local_port: portNum,
       app_name: app_name.trim(),
       hostname: os.hostname(),
-      os_type: `${os.type()} ${os.release()} (${os.arch()})`
+      os_type: osType
     });
 
     // 2. Tulis file .conf WireGuard ke disk lokal
