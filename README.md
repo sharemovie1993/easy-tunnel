@@ -198,6 +198,17 @@ Dapodik :8983 / E-Rapor :9000 / dll
 
 ---
 
+## 📊 Pemantauan Sistem & Telemetri
+
+Easy Tunnel dilengkapi dengan penjadwal telemetri latar belakang otomatis (berjalan setiap 5 menit) yang mengirimkan detak jantung (*heartbeat*) kesehatan sistem ke server lisensi pusat (`https://api.absenta.id`).
+
+Data telemetri yang dikirimkan meliputi:
+- **Penggunaan Memori (RAM)**: Persentase RAM terpakai saat ini pada host.
+- **Ukuran Database**: Ukuran berkas database SQLite `local.db` dalam satuan Megabytes (MB).
+- **Spesifikasi Perangkat Keras**: Detil CPU prosesor (nama model dan jumlah core logis), kapasitas total RAM fisik, dan kapasitas media penyimpanan utama (Drive `C:` di Windows atau mount root `/` di Linux) yang digabungkan pada field telemetri `osType`.
+
+---
+
 ## Kontak & Support
 
 - 🌐 Website: [absenta.id](https://absenta.id)
