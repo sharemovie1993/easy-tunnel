@@ -254,10 +254,36 @@ export default function HistoryPage({ licenseServerUrl }: HistoryPageProps) {
               {/* Tampilan Dinamis Petunjuk Pembayaran */}
               {isManual ? (
                 // ── MANUAL TRANSFER INSTRUCTIONS ──
-                <div className="alert alert-warning" style={{ fontSize: 12, marginBottom: 20, lineHeight: 1.5 }}>
-                  💡 <strong>Instruksi Transfer Manual:</strong><br />
-                  Silakan lakukan transfer manual sebesar <strong>{formatRupiah(selectedInvoice.amount)}</strong> ke rekening BNI Pengelola utama yang tertera di WA Notifikasi Anda.<br /><br />
-                  <strong>PENTING:</strong> Setelah transfer, silakan balas notifikasi WhatsApp Easy Tunnel dengan kata <strong>KONFIRMASI {selectedInvoice.invoice_number}</strong> dan kirim foto/gambar bukti transfer Anda.
+                <div className="alert alert-warning" style={{ fontSize: 12, marginBottom: 20, lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    💡 <strong>Instruksi Transfer Manual:</strong><br />
+                    Silakan lakukan transfer manual sebesar <strong>{formatRupiah(selectedInvoice.amount)}</strong> ke rekening pengelola berikut:
+                  </div>
+                  {payInfo ? (
+                    <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8, fontFamily: 'monospace', fontSize: 11.5 }}>
+                      {payInfo.bank_name && <div>Bank: <strong>{payInfo.bank_name}</strong></div>}
+                      {payInfo.account_number && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                          <span>No. Rekening: <strong>{payInfo.account_number}</strong></span>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer' }}
+                            onClick={() => handleCopyCode(payInfo.account_number)}
+                          >
+                            {copied ? 'Tersalin' : 'Salin'}
+                          </button>
+                        </div>
+                      )}
+                      {payInfo.account_holder && <div style={{ marginTop: 4 }}>Atas Nama: <strong>{payInfo.account_holder}</strong></div>}
+                    </div>
+                  ) : (
+                    <div style={{ fontStyle: 'italic', color: 'var(--color-text-dim)' }}>
+                      Detail rekening transfer dapat dilihat di WhatsApp Notifikasi Anda.
+                    </div>
+                  )}
+                  <div>
+                    <strong>PENTING:</strong> Setelah transfer, silakan balas notifikasi WhatsApp Operator dengan kata <strong>KONFIRMASI {selectedInvoice.invoice_number}</strong> dan kirim foto/gambar bukti transfer Anda.
+                  </div>
                 </div>
               ) : (
                 // ── TRIPAY / GATEWAY VIRTUAL ACCOUNT / QRIS INSTRUCTIONS ──
